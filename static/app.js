@@ -1011,13 +1011,14 @@ function shortBssid(b) {
 
 function bssidMatchesAp(bssid, apBssid) {
   if (!bssid || !apBssid) return false;
-  // Normalize: lowercase, strip dashes
+  // Normalize: lowercase, colons
   const a = bssid.toLowerCase().replace(/-/g, ':');
   const b = apBssid.toLowerCase().replace(/-/g, ':');
   if (a === b) return true;
-  // Fuzzy: match if first 14 chars match (same device, different radio)
-  // e.g. 5c:62:8b:2a:21:7a vs 5c:62:8b:2a:21:78
-  return a.length >= 14 && b.length >= 14 && a.slice(0, 14) === b.slice(0, 14);
+  // Fuzzy: match on first 16 chars (5 octets + first hex digit of 6th)
+  // e.g. 5c:62:8b:2a:21:7a vs 5c:62:8b:2a:21:78 -> "...21:7" matches (same device)
+  // but  5c:62:8b:29:d0:50 vs 5c:62:8b:29:d0:b8 -> "...d0:5" vs "...d0:b" no match
+  return a.length >= 16 && b.length >= 16 && a.slice(0, 16) === b.slice(0, 16);
 }
 
 function apNameForBssid(bssid) {

@@ -62,14 +62,20 @@ def rssi_label(rssi: int) -> str:
 
 
 def _bssid_matches(a: str, b: str) -> bool:
-    """Fuzzy BSSID match — same device, different radio offset."""
+    """Fuzzy BSSID match — same device, different radio offset.
+
+    Matches on first 16 chars (5 octets + first hex digit of 6th).
+    Radio variants differ in the last 1-2 digits of the final octet
+    (e.g. :78 vs :7b), but different devices from the same batch
+    differ earlier (e.g. :d0:50 vs :d0:b8).
+    """
     if not a or not b:
         return False
     a = a.lower().replace("-", ":")
     b = b.lower().replace("-", ":")
     if a == b:
         return True
-    return len(a) >= 14 and len(b) >= 14 and a[:14] == b[:14]
+    return len(a) >= 16 and len(b) >= 16 and a[:16] == b[:16]
 
 
 def _ap_name_for_bssid(bssid, access_points):
