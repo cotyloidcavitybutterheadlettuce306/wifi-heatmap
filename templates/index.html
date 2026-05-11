@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>wifi-heatmap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ config.get('VERSION', '2') }}">
+</head>
+<body>
+
+  <!-- Auth gate: shown on load until the user provides their sudo password -->
+  <div id="auth-overlay" class="overlay">
+    <div class="auth-card">
+      <h1 class="brand"><div class="logo"></div>wifi<span class="dot">.</span>heatmap</h1>
+      <p class="subtitle">A measurement instrument for wireless coverage.</p>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth="local">Local</button>
+        <button class="auth-tab" data-auth="remote">Remote</button>
+      </div>
+      <div id="auth-local" class="auth-pane active">
+        <div class="field">
+          <label for="auth-password">sudo password <span class="hint-icon" title="macOS requires admin privileges to read WiFi signal data. Your password is held in memory only and discarded when you quit.">?</span></label>
+          <input type="password" id="auth-password" autofocus>
+          <p class="hint">Stored only in memory. Never saved to disk.</p>
+        </div>
+        <button id="auth-submit" class="primary">Authenticate</button>
+      </div>
+      <div id="auth-remote" class="auth-pane">
+        <div class="field">
+          <label for="auth-agent-url">Agent IP <span class="hint-icon" title="Run agent.py on another Mac and enter its IP here. That machine becomes the WiFi sensor.">?</span></label>
+          <input type="text" id="auth-agent-url" placeholder="192.168.1.50">
+          <p class="hint">Run <code>python3 agent.py</code> on the remote machine (macOS, Linux, or Windows).</p>
+        </div>
+        <button id="auth-remote-submit" class="primary">Connect</button>
+      </div>
+      <div id="auth-error" class="error" hidden></div>
+    </div>
+  </div>
+
+  <!-- Main app: shown after auth -->
+  <main id="app" hidden>
+    <header class="topbar">
+      <div class="brand-small"><div class="logo"></div>wifi<span class="dot">.</span>heatmap</div>
+      <div class="status" id="status-text">— no floor plan loaded —</div>
+      <div class="topbar-actions">
+        <div class="btn-group">
+          <button id="monitor-btn" class="ghost-btn" title="Live signal monitor — polls WiFi every 2 seconds. Stop when not surveying to save battery.">Monitor</button>
+        </div>
+        <div class="btn-group">
+          <button id="new-survey-btn" class="ghost-btn" title="Clear all points, rooms, and APs. Keeps the floor plan.">New Survey</button>
+          <button id="snapshot-btn" class="ghost-btn" title="Save the current survey state. Use Compare to see what changed after moving a router or adding an AP.">Save Snapshot</button>
+          <select id="compare-select" class="ghost-btn compare-select" title="Compare the current survey against a saved snapshot to see improvements.">
+            <option value="">Compare…</option>
+          </select>
+        </div>
+        <div class="btn-group">
+          <button id="export-btn" class="ghost-btn" title="Download the floor plan with heatmap overlay, markers, and legend as a single PNG.">Export PNG</button>
+          <label class="upload-btn">
+            <input type="file" id="floorplan-upload" accept="image/*" hidden>
+            Upload floor plan
+          </label>
+        </div>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <!-- Floor plan canvas - main interaction surface -->
+      <div class="canvas-wrap" id="canvas-wrap">
+        <div class="canvas-empty" id="canvas-empty">
+          <div class="empty-icon">⌖</div>
+          <p>Upload a floor plan image to begin.</p>
+          <p class="hint">PNG or JPG. Hand-drawn works.</p>
+        </div>
+
+        <div class="canvas-stage" id="canvas-stage" hidden>
+          <img id="floorplan-img" alt="floor plan">
+          <img id="heatmap-overlay" class="heatmap-overlay" hidden alt="heatmap">
+          <div id="markers-layer" class="markers-layer"></div>
+        </div>
+
+        <div id="canvas-hint" class="canvas-hint" hidden></div>
+
+        <div id="scan-overlay" class="scan-overlay" hidden>
+          <div class="spinner"></div>
+          <div class="scan-text">Taking 3 samples, 1 second apart…</div>
+        </div>
+
+        <div class="zoom-indicator" id="zoom-indicator" hidden>
+          <span id="zoom-level">100%</span>
+          <button id="reset-view" class="ghost-btn small">Reset</button>
+        </div>
+
+        <div id="live-monitor" class="live-monitor" hidden>
+          <div class="monitor-header">
+            <span class="monitor-title">Signal Monitor</span>
+            <button id="monitor-close" class="close-btn" title="Close">×</button>
+          </div>
+          <div class="monitor-body">
+            <div class="monitor-row">
+              <span class="monitor-label">SSID</span>
+              <span id="monitor-ssid" class="monitor-value">—</span>
+            </div>
+            <div class="monitor-row">
+              <span class="monitor-label" title="The hardware address of the specific router or mesh node you're connected to right now. Changes as you walk near different nodes.">BSSID</span>
+              <span id="monitor-bssid" class="monitor-value">—</span>
+            </div>
+            <div id="monitor-ap-row" class="monitor-row" hidden>
+              <span class="monitor-label">AP</span>
+              <span id="monitor-ap-name" class="monitor-value" style="color:var(--accent)">—</span>
+            </div>
+            <div class="monitor-row">
+              <span class="monitor-label" title="Received Signal Strength Indicator in dBm. Closer to 0 is stronger.">RSSI</span>
+              <span id="monitor-rssi-value" class="monitor-value">—</span>
+            </div>
+            <div class="monitor-bar-wrap">
+              <div class="monitor-bar" id="monitor-bar"></div>
+            </div>
+            <div class="monitor-row">
+              <span class="monitor-label" title="Signal-to-Noise Ratio. Higher is better. Above 25 dB is good, below 15 dB may cause issues.">SNR</span>
+              <span id="monitor-snr" class="monitor-value">—</span>
+            </div>
+            <div class="monitor-row">
+              <span class="monitor-label" title="WiFi channel and frequency band. 5 GHz is faster but shorter range. 2.4 GHz has better range but more interference.">Channel</span>
+              <span id="monitor-channel" class="monitor-value">—</span>
+            </div>
+            <div class="monitor-row">
+              <span class="monitor-label">Tx Rate</span>
+              <span id="monitor-tx-rate" class="monitor-value">—</span>
+            </div>
+            <div class="monitor-row">
+              <span class="monitor-label">Updated</span>
+              <span id="monitor-time" class="monitor-value">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Side panel: tabbed layout -->
+      <aside class="sidebar">
+        <nav class="tab-strip">
+          <button class="tab active" data-tab="tab-heatmap">Heatmap</button>
+          <button class="tab" data-tab="tab-points">Points</button>
+          <button class="tab" data-tab="tab-insights">Insights</button>
+        </nav>
+
+        <div id="tab-heatmap" class="tab-panel active">
+          <section class="panel">
+            <div class="field">
+              <div class="field-head">
+                <span class="lab">Display</span>
+              </div>
+              <div class="toggle-row">
+                <div>
+                  <span class="name">Show floor plan</span>
+                  <small class="desc">Toggle the background image</small>
+                </div>
+                <button class="toggle-switch on" id="floorplan-toggle" aria-pressed="true"></button>
+              </div>
+              <div class="toggle-row">
+                <div>
+                  <span class="name">Show overlay</span>
+                  <small class="desc">Interpolated coverage map</small>
+                </div>
+                <button class="toggle-switch" id="heatmap-toggle" aria-pressed="false"></button>
+              </div>
+              <div class="toggle-row">
+                <div>
+                  <span class="name">Force roam <span class="hint-icon" title="Toggles WiFi off/on before each measurement so the laptop connects to the nearest mesh node. Slower (~6s per measurement) but gives accurate per-AP data.">?</span></span>
+                  <small class="desc">Reconnect WiFi each measurement</small>
+                </div>
+                <button class="toggle-switch" id="force-roam-toggle" aria-pressed="false"></button>
+              </div>
+              <div class="toggle-row">
+                <div>
+                  <span class="name">Speed test <span class="hint-icon" title="Downloads 100 MB from Cloudflare to capture actual download speed. Adds a few seconds per measurement.">?</span></span>
+                  <small class="desc">Measure download throughput</small>
+                </div>
+                <button class="toggle-switch" id="speed-test-toggle" aria-pressed="false"></button>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field-head">
+                <span class="lab">Metric <span class="hint-icon" title="RSSI = raw signal power. SNR = signal minus noise (more useful). Tx Rate = negotiated link speed. Speed = actual download throughput.">?</span></span>
+              </div>
+              <div class="metric-seg" id="metric-seg">
+                <button class="on" data-metric="rssi">RSSI<small>dBm</small></button>
+                <button data-metric="snr">SNR<small>dB</small></button>
+                <button data-metric="txrate">Rate<small>Mbps</small></button>
+                <button data-metric="speed">Speed<small>Mbps</small></button>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field-head">
+                <span class="lab">Filter by AP <span class="hint-icon" title="On mesh networks, filter to see one node's coverage area.">?</span></span>
+              </div>
+              <select class="select" id="bssid-filter">
+                <option value="">All access points combined</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <div class="field-head">
+                <span class="lab">Overlay opacity</span>
+                <span class="val num" id="alpha-value">60%</span>
+              </div>
+              <input type="range" id="alpha-slider" min="20" max="100" value="60">
+            </div>
+
+            <div class="legend">
+              <div class="legend-bar"></div>
+              <div class="legend-labels">
+                <span>-85 dBm</span>
+                <span>-30 dBm</span>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div id="tab-points" class="tab-panel">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Rooms</h2>
+              <button id="draw-room-btn" class="ghost-btn small" title="Click two corners on the floor plan to define a room">Draw Room</button>
+            </div>
+            <div id="room-list" class="points-list">
+              <p class="hint empty-hint">Draw room boundaries to get per-room insights.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Access points</h2>
+              <div style="display:flex;gap:4px;">
+                <button id="clear-all-ap" class="ghost-btn small" title="Remove all access points">Clear all</button>
+                <button id="place-ap-btn" class="ghost-btn small" title="Click floor plan to place an AP">Place AP</button>
+              </div>
+            </div>
+            <div id="ap-list" class="points-list">
+              <p class="hint empty-hint">Mark where your routers are on the floor plan.</p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Survey points</h2>
+              <button id="clear-all" class="ghost-btn small" title="Remove all points">Clear all</button>
+            </div>
+            <div class="points-search">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><path d="M14 14l-3.5-3.5"/></svg>
+              <input type="text" placeholder="Search BSSID, note, room…" id="point-search">
+            </div>
+            <div id="points-list" class="points-list">
+              <p class="hint empty-hint">Click anywhere on the floor plan to take a measurement.</p>
+            </div>
+          </section>
+        </div>
+
+        <div id="tab-insights" class="tab-panel">
+          <section class="panel" id="insights-panel">
+            <div id="insights-list">
+              <p class="hint empty-hint">Take more measurements to see insights.</p>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Room name dialog -->
+    <div id="room-dialog" class="overlay light-overlay" hidden>
+      <div class="auth-card" style="width: 360px; padding: 32px 28px; position: relative;">
+        <button class="dialog-close" onclick="this.closest('.overlay').hidden=true" title="Close">&times;</button>
+        <h2 style="font-weight: 600; font-size: 18px; margin-bottom: 16px;">Name this room</h2>
+        <div class="field">
+          <label for="room-name">Room name</label>
+          <input type="text" id="room-name" placeholder="e.g. Kitchen, Master Bedroom">
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="room-dialog-cancel" class="ghost-btn" style="flex:1;">Cancel</button>
+          <button id="room-dialog-save" class="primary" style="flex:1;">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AP placement dialog -->
+    <div id="ap-dialog" class="overlay light-overlay" hidden>
+      <div class="auth-card" style="width: 360px; padding: 32px 28px; position: relative;">
+        <button class="dialog-close" onclick="this.closest('.overlay').hidden=true" title="Close">&times;</button>
+        <h2 style="font-weight: 600; font-size: 18px; margin-bottom: 16px;">Place access point</h2>
+        <div class="field">
+          <label for="ap-name">Name</label>
+          <input type="text" id="ap-name" placeholder="e.g. TP-Link Living Room">
+        </div>
+        <div class="field">
+          <label for="ap-bssid">BSSID (optional) <span class="hint-icon" title="The MAC address of this router/node. If you've taken measurements, the known BSSIDs will appear as suggestions. Linking a BSSID lets the app show which measurements came from this AP.">?</span></label>
+          <input type="text" id="ap-bssid" list="ap-bssid-list" placeholder="aa:bb:cc:dd:ee:ff">
+          <datalist id="ap-bssid-list"></datalist>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="ap-dialog-cancel" class="ghost-btn" style="flex:1;">Cancel</button>
+          <button id="ap-dialog-save" class="primary" style="flex:1;">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snapshot name dialog -->
+    <div id="snapshot-dialog" class="overlay light-overlay" hidden>
+      <div class="auth-card" style="width: 360px; padding: 32px 28px; position: relative;">
+        <button class="dialog-close" onclick="this.closest('.overlay').hidden=true" title="Close">&times;</button>
+        <h2 style="font-weight: 600; font-size: 18px; margin-bottom: 16px;">Save snapshot</h2>
+        <div class="field">
+          <label for="snapshot-name">Name</label>
+          <input type="text" id="snapshot-name" placeholder="e.g. Before moving router">
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="snapshot-cancel" class="ghost-btn" style="flex:1;">Cancel</button>
+          <button id="snapshot-save" class="primary" style="flex:1;">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparison modal -->
+    <div id="compare-modal" class="overlay" hidden>
+      <div class="compare-card">
+        <div class="compare-header">
+          <h2 style="font-family: var(--font-serif); font-size: 22px;">Comparison</h2>
+          <button id="compare-close" class="point-delete" style="font-size:20px;" title="Close">&times;</button>
+        </div>
+        <div class="compare-body">
+          <div class="compare-heatmaps">
+            <div class="compare-side">
+              <div class="compare-label">Current</div>
+              <img id="compare-current-img" class="compare-img" alt="current heatmap">
+            </div>
+            <div class="compare-side">
+              <div class="compare-label" id="compare-snapshot-label">Snapshot</div>
+              <img id="compare-snapshot-img" class="compare-img" alt="snapshot heatmap">
+            </div>
+          </div>
+          <div id="compare-diff" class="compare-diff"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast for feedback -->
+    <div id="toast" class="toast" hidden></div>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}?v={{ config.get('VERSION', '2') }}"></script>
+</body>
+</html>

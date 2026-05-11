@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Survey data (user-specific)
+data/*
+!data/.gitkeep
+!data/snapshots/
+data/snapshots/*
+!data/snapshots/.gitkeep
+
+# Vendored wheels
+wifi-wheels/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude
+.claude/
