@@ -49,27 +49,94 @@ pip install -r requirements.txt
 
 Open http://localhost:5001 in your browser.
 
-## How it works
+## How to survey your home
 
-1. **Authenticate** — enter your sudo password (local mode) or a remote agent IP
-2. **Upload a floor plan** — any image (PNG, JPG, hand-drawn sketch)
-3. **Draw rooms** — click two corners to define room boundaries
-4. **Place access points** — mark where your routers are on the map
-5. **Click to measure** — each click scans WiFi and drops a colored marker
-6. **Toggle the heatmap** — switch between RSSI, SNR, Tx Rate, or Speed views
-7. **Check insights** — the Insights tab auto-analyzes coverage, dead zones, and sticky-client behavior
-8. **Save & compare** — save a snapshot, make changes, compare before/after
-
-## Remote scanning
-
-Run the agent on any machine (macOS, Linux, or Windows):
+### Step 1: Set up
 
 ```bash
-# Copy agent.py to the remote machine, then:
-python3 agent.py
+./run.sh                    # start the server
+open http://localhost:5001  # open in browser
 ```
 
-No pip install needed — pure stdlib. Enter the remote machine's IP on the auth screen of the main app.
+Enter your sudo password on the auth screen (Local tab).
+
+### Step 2: Prepare the floor plan
+
+1. **Upload a floor plan** — any image works (PNG, JPG, photo of a paper blueprint, hand-drawn sketch)
+2. **Draw rooms** — click "Draw Room" in the Points tab, click two corners on the map, name the room. Repeat for each room.
+3. **Place access points** — click "Place AP", click where your router/mesh node is on the map, name it, and enter its BSSID (found in your router's admin app). The BSSID links measurements to specific nodes.
+
+### Step 3: Walk and measure
+
+1. Enable **Force roam** if you have a mesh network (Deco, Eero, Orbi) — this toggles WiFi off/on before each scan so your laptop connects to the nearest node instead of staying stuck on one
+2. Optionally enable **Speed test** to capture download throughput at each point (adds ~2-5s per measurement, disable VPN first for accurate results)
+3. **Walk to a spot**, click where you're standing on the floor plan, wait for the beep (~3-10s depending on toggles)
+4. Repeat across your home — aim for at least 15-20 points spread across all rooms
+
+### Step 4: Analyze
+
+- Switch the **Metric** dropdown between RSSI, SNR, Tx Rate, or Speed to see different views
+- Check the **Insights** tab for automated findings: dead zones, weak points, per-room averages, sticky-client warnings
+- Use **Filter by AP** to see one mesh node's coverage area
+- Click any marker or sidebar row to see detailed info
+
+### Step 5: Optimize and compare
+
+1. Click **Save Snapshot** to save the current state
+2. Move a router, add a mesh node, or change settings
+3. Re-survey the same spots
+4. Use **Compare** to see side-by-side heatmaps and numerical diffs ("average RSSI improved by 3.2 dBm", "dead zone area reduced from 12% to 4%")
+
+## Local vs Remote mode
+
+Two ways to scan — choose on the auth screen:
+
+```
+LOCAL MODE (default)
+
+  You carry the laptop and click on its own screen.
+
+  ┌──────────────────────────────────────────┐
+  │  Laptop (walks around)                   │
+  │                                          │
+  │  Browser ←→ Flask app ←→ wdutil (scan)   │
+  │     ↑                                    │
+  │  you click here                          │
+  └──────────────────────────────────────────┘
+
+
+REMOTE MODE
+
+  One machine scans, another controls. Useful when you have a
+  second machine but can't install Python packages on it.
+
+  ┌─────────────────────────────┐     ┌──────────────────────────┐
+  │  Your desk                  │     │  Remote machine           │
+  │                             │     │  (walks around)           │
+  │  Browser ←→ Flask app ──────────→ │  agent.py :5555           │
+  │     ↑                      │     │  ↓                        │
+  │  you click here            │     │  wdutil / nmcli / netsh   │
+  └─────────────────────────────┘     └──────────────────────────┘
+
+  1. Copy agent.py to the remote machine
+  2. Run: python3 agent.py  (no pip install needed — pure stdlib)
+  3. On the auth screen, switch to "Remote" tab, enter the IP
+  4. Walk around with the remote machine, click positions from your desk
+```
+
+The remote agent auto-detects the OS:
+- **macOS**: uses `wdutil info` (needs sudo)
+- **Linux**: uses `nmcli` (no root) or `iwconfig` (needs root)
+- **Windows**: uses `netsh wlan show interfaces` (no admin needed)
+
+## Tips
+
+- **Turn off your VPN** before surveying with speed test enabled — VPN tunnels bottleneck throughput and give misleading numbers
+- **Enable Force roam** for mesh networks — without it, your laptop may "stick" to one node even when a closer one is available, making the heatmap look like you only have one AP
+- **Link APs by BSSID** — the app uses fuzzy MAC matching (matches the first 5.5 octets) so it handles radio offsets automatically (e.g. your Deco's base MAC `:78` matches its 5 GHz radio `:7b`)
+- **15+ measurements** unlocks dead zone analysis in the Insights tab
+- **Draw rooms first** — insights will reference rooms by name ("Kitchen averages -68 dBm") instead of pixel coordinates
+- **Save snapshots before changes** — you can always restore a snapshot if you want to go back
 
 ## Architecture
 
